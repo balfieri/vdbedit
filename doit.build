@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+use strict; 
+use warnings;
+my $cmd_en = 1;
+sub cmd { my $c = shift; print "${c}\n"; !$cmd_en || system( $c ) == 0 or die "ERROR: command failed: ${c}\n"; }
+
+my $prog = "vdbedit";
+
+my $do_build = (@ARGV != 0) ? int(shift @ARGV) : 1;
+
+if ( $do_build ) {
+    print "Building ${prog}.x...\n";
+    my $FLAGS = "-std=c++11 -O3 -Werror -Wextra -Wstrict-aliasing -pedantic -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-include-dirs  -Woverloaded-virtual -Wredundant-decls -Wsign-promo -Wstrict-overflow=5 -Wswitch-default -Wundef -fdiagnostics-color=never -Wno-unused-function -g";
+    my $CXX_FLAGS = "-O3 -DNDEBUG -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk   -D_THREAD_SAFE -std=c++14";
+    my $CXX_DEFINES = "-DBOOST_ALL_NO_LIB -DBOOST_IOSTREAMS_DYN_LINK -DBOOST_SYSTEM_DYN_LINK -DOPENVDB_ABI_VERSION_NUMBER=7 -DOPENVDB_DLL";
+    my $CXX_INCLUDES = "-isystem /usr/local/include -isystem /usr/local/include/OpenEXR";
+    my $EXTRA_CFLAGS = $ENV{EXTRA_CFLAGS} || "";
+    my $FLAGS = "${CXX_FLAGS} ${CXX_DEFINES} ${CXX_INCLUDES}";
+    cmd( "rm -f ${prog}.x *.o" );
+    cmd( "g++ -g -std=c++17 ${FLAGS} -O3 -I.. -o ${prog}.o -c ${prog}.cpp ${EXTRA_CFLAGS}" );
+    cmd( "g++ -g -o ${prog}.x ${prog}.o -lz -lopenvdb -ltbb -lHalf -ltiff" );
+}
+#cmd( "./${prog}.x" );
