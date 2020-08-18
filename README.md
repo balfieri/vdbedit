@@ -6,5 +6,5 @@ doit.clean  - deletes built files<br>
 
 This is open source.  See LICENSING.md.
 
-Bob Alfieri
+Bob Alfieri<br>
 Chapel Hill, NC
