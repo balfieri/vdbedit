@@ -49,6 +49,7 @@ int main( int argc, const char * argv[] )
     bool        have_mfpl = false;
     float       mfpl;
     bool        do_prune = false;
+    bool        debug = false;
     for( int i = 1; i < argc; i++ )
     {
         std::string arg = argv[i];    
@@ -80,6 +81,8 @@ int main( int argc, const char * argv[] )
             std::cout << "mfpl=" << mfpl << "\n";
         } else if ( arg == "-do_prune" ) {
             do_prune = std::atoi( argv[++i] );
+        } else if ( arg == "-d" ) {
+            debug = std::atoi( argv[++i] );
         } else {
             die( "unknown option: " + arg );
         }
@@ -104,20 +107,26 @@ int main( int argc, const char * argv[] )
         //------------------------------------------------
         // Read In TIF Stack
         //------------------------------------------------
+        std::cout << "Reading " << tiff_name << " and converting to a volume...\n";
         tiff = TIFFOpen( tiff_name.c_str(), "r" );
-        TIFFPrintDirectory( tiff, stdout, 0 );
-        uint32_t width;
-        uint32_t height;
-        uint32_t depth;
-        TIFFGetField( tiff, TIFFTAG_IMAGEWIDTH,  &width  );
-        TIFFGetField( tiff, TIFFTAG_IMAGELENGTH, &height );
-        TIFFGetField( tiff, TIFFTAG_IMAGEDEPTH,  &depth  );
-        uint32_t npixels = width*height*depth;
-        uint32_t *image = (uint32_t*)_TIFFmalloc( npixels * sizeof(uint32_t) );
+        if ( debug ) TIFFPrintDirectory( tiff, stdout, 0 );
+        uint32_t w;
+        uint32_t h;
+        uint32_t image_cnt = 0;
+        for( ;; )
+        {
+            if ( !TIFFReadDirectory( tiff ) ) break;
 
-        // TODO: see libtiff.org. need to read directory first
-
-        _TIFFfree( image );
+            TIFFGetField( tiff, TIFFTAG_IMAGEWIDTH,  &w );
+            TIFFGetField( tiff, TIFFTAG_IMAGELENGTH, &h );
+            uint32_t pixel_cnt = w*h;
+            uint32_t *image = (uint32_t*)_TIFFmalloc( pixel_cnt * sizeof(uint32_t) );
+            if ( !TIFFReadRGBAImage( tiff, w, h, image, 0 ) ) die( "unable to read tiff image" + std::to_string(image_cnt) + " data" );
+            image_cnt++;
+            _TIFFfree( image );
+        }
+        TIFFClose( tiff );
+        std::cout << image_cnt << " tiff images read\n";
 
     } else { 
         die( "must provide -i or -tiff options for now" );
