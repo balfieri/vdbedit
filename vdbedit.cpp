@@ -29,6 +29,7 @@
 
 using Vec3f = openvdb::Vec3f;
 using Vec3d = openvdb::Vec3d;
+using Coord = openvdb::Coord;
 using CoordBBox = openvdb::math::CoordBBox;
 
 void die( std::string msg ) { std::cout << "ERROR: " << msg << "\n"; exit( 1 ); }
@@ -105,15 +106,22 @@ int main( int argc, const char * argv[] )
 
     } else if ( tiff_name != "" ) {
         //------------------------------------------------
-        // Read In TIF Stack
+        // Read TIF Stack Into RGB Grid
         //------------------------------------------------
+        openvdb::Vec3SGrid::Ptr rgb_grid = openvdb::Vec3SGrid::create();
+        openvdb::Vec3SGrid::Accessor rgb_acc = rgb_grid->getAccessor();
+        rgb_grid->setGridClass( openvdb::GRID_UNKNOWN );
+        rgb_grid->setName( "rgb" );
+        rgb_grid->setTransform( openvdb::math::Transform::createLinearTransform( tiff_spacing[0] ) ); // TODO: temporary
+        grids->push_back( rgb_grid );
+
         std::cout << "Reading " << tiff_name << " and converting to a volume...\n";
         tiff = TIFFOpen( tiff_name.c_str(), "r" );
         if ( debug ) TIFFPrintDirectory( tiff, stdout, 0 );
         uint32_t w;
         uint32_t h;
-        uint32_t image_cnt = 0;
-        for( ;; )
+        uint32_t z;
+        for( z = 0; ; z++ )
         {
             if ( !TIFFReadDirectory( tiff ) ) break;
 
@@ -121,12 +129,28 @@ int main( int argc, const char * argv[] )
             TIFFGetField( tiff, TIFFTAG_IMAGELENGTH, &h );
             uint32_t pixel_cnt = w*h;
             uint32_t *image = (uint32_t*)_TIFFmalloc( pixel_cnt * sizeof(uint32_t) );
-            if ( !TIFFReadRGBAImage( tiff, w, h, image, 0 ) ) die( "unable to read tiff image" + std::to_string(image_cnt) + " data" );
-            image_cnt++;
+            if ( !TIFFReadRGBAImage( tiff, w, h, image, 0 ) ) die( "unable to read tiff image" + std::to_string(z) + " data" );
+            uint32_t *pixel = image;
+            for( uint32_t y = 0; y < h; y++ )
+            {
+                for( uint32_t x = 0; x < w; x++, pixel++ )
+                {
+                    uint32_t argb = *pixel;
+                    uint32_t a = (argb >> 24) & 0xff;
+                    uint32_t r = (argb >> 16) & 0xff;
+                    uint32_t g = (argb >>  8) & 0xff;
+                    uint32_t b = (argb >>  0) & 0xff;
+                    if ( a != 0xff ) die( "alpha channel should be 0xff for now" );
+                    float r_f = float(r) / float(0xff);
+                    float g_f = float(g) / float(0xff);
+                    float b_f = float(b) / float(0xff);
+                    rgb_acc.setValue( Coord( x, y, z ), Vec3f( r_f, g_f, b_f ) );
+                }
+            }
             _TIFFfree( image );
         }
         TIFFClose( tiff );
-        std::cout << image_cnt << " tiff images read\n";
+        std::cout << z << " tiff images read\n";
 
     } else { 
         die( "must provide -i or -tiff options for now" );
