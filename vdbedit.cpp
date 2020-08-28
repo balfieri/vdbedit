@@ -158,7 +158,7 @@ int main( int argc, const char * argv[] )
 
     //------------------------------------------------
     // Find widest dimensions from all grids.
-    // voxel_size must all be the same for now.
+    // The 4x4 index-to-world transform must be the same for all grids.
     //------------------------------------------------
     int x_min =  0x7fffffff;
     int x_max = -0x7fffffff;
@@ -167,13 +167,11 @@ int main( int argc, const char * argv[] )
     int z_min =  0x7fffffff;
     int z_max = -0x7fffffff;
     CoordBBox bbox;
-    Vec3d voxel_size3 = (*grids)[0]->transform().voxelSize();
-    double voxel_size = voxel_size3.x();
-    assert( voxel_size == voxel_size3.y() && voxel_size == voxel_size.z() );
+    openvdb::math::Transform::Ptr transform_ptr;
     for( int i = 0; i < grids->size(); i++ )
     {
         assert( (*grids)[i]->transform().voxelSize() == voxel_size3 );
-        bbox = (*grids)[0]->evalActiveVoxelBoundingBox();
+        bbox = (*grids)[i]->evalActiveVoxelBoundingBox();
         auto min = bbox.min();
         auto max = bbox.max();
         if (min.x() < x_min) x_min = min.x();
@@ -182,8 +180,11 @@ int main( int argc, const char * argv[] )
         if (max.y() > y_max) y_max = max.y();
         if (min.z() < z_min) z_min = min.z();
         if (max.z() > z_max) z_max = max.z();
-        std::cout << "Volume dimensions after grid_i=" << i << " are: [" << x_min << "," << y_min << "," << z_min << "] .. [" << 
-                                                                            x_max << "," << y_max << "," << z_max << "]\n";
+        auto voxel_size = (*grids)[i]->voxelSize();
+        bool has_uniform = (*grids)[i]->hasUniformVoxels();
+        transform_ptr = (*grids)[i]->transformPtr();
+        std::cout << "Volume dimensions after grid_i=" << i << " with ibox=" << bbox << " transform=" << *transform_ptr << 
+                     " are: [" << x_min << "," << y_min << "," << z_min << "] .. [" << x_max << "," << y_max << "," << z_max << "]\n";
     }
     bbox = CoordBBox( x_min, y_min, z_min, x_max, y_max, z_max ); // update
 
@@ -200,7 +201,7 @@ int main( int argc, const char * argv[] )
         openvdb::Vec3SGrid::Accessor rgb_acc = rgb_grid->getAccessor();
         rgb_grid->setGridClass( openvdb::GRID_UNKNOWN );
         rgb_grid->setName( "rgb" );
-        rgb_grid->setTransform( openvdb::math::Transform::createLinearTransform( voxel_size ) );
+        rgb_grid->setTransform( transform_ptr );
         grids->push_back( rgb_grid );
 
         rgb_grid->fill( bbox, rgb, true );
@@ -216,7 +217,7 @@ int main( int argc, const char * argv[] )
         openvdb::FloatGrid::Accessor G_acc = g_grid->getAccessor();
         g_grid->setGridClass( openvdb::GRID_UNKNOWN );
         g_grid->setName( "g" );
-        g_grid->setTransform( openvdb::math::Transform::createLinearTransform( voxel_size ) );
+        g_grid->setTransform( transform_ptr );
         grids->push_back( g_grid );
 
         g_grid->fill( bbox, g, true );
@@ -232,7 +233,7 @@ int main( int argc, const char * argv[] )
         openvdb::FloatGrid::Accessor G_acc = mfpl_grid->getAccessor();
         mfpl_grid->setGridClass( openvdb::GRID_UNKNOWN );
         mfpl_grid->setName( "mfpl" );
-        mfpl_grid->setTransform( openvdb::math::Transform::createLinearTransform( voxel_size ) );
+        mfpl_grid->setTransform( transform_ptr );
         grids->push_back( mfpl_grid );
 
         mfpl_grid->fill( bbox, mfpl, true );
