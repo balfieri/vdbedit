@@ -41,7 +41,7 @@ int main( int argc, const char * argv[] )
     //------------------------------------------------
     std::string in_name = "";
     std::string tiff_name = "";
-    Vec3f       tiff_spacing( 1, 1, 1 );
+    Vec3d       tiff_spacing( 1, 1, 1 );
     std::string out_name = "";
     bool        have_rgb = false;
     Vec3f       rgb;
@@ -112,7 +112,9 @@ int main( int argc, const char * argv[] )
         openvdb::Vec3SGrid::Accessor rgb_acc = rgb_grid->getAccessor();
         rgb_grid->setGridClass( openvdb::GRID_UNKNOWN );
         rgb_grid->setName( "rgb" );
-        rgb_grid->setTransform( openvdb::math::Transform::createLinearTransform( tiff_spacing[0] ) ); // TODO: temporary
+        openvdb::math::Transform::Ptr transform_ptr = openvdb::math::Transform::createLinearTransform();
+        transform_ptr->postScale( tiff_spacing );
+        rgb_grid->setTransform( transform_ptr );
         grids->push_back( rgb_grid );
 
         std::cout << "Reading " << tiff_name << " and converting to a volume...\n";
