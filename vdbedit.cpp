@@ -45,6 +45,8 @@ int main( int argc, const char * argv[] )
     std::string out_name = "";
     bool        have_rgb = false;
     Vec3f       rgb;
+    bool        have_d = false;
+    float       d;
     bool        have_g = false;
     float       g;
     bool        have_mfpl = false;
@@ -72,6 +74,10 @@ int main( int argc, const char * argv[] )
             have_rgb = true;
             rgb = Vec3f( r, g, b );
             std::cout << "rgb=" << r << "," << g << "," << b << "\n";
+        } else if ( arg == "-d" ) {
+            have_d = true;
+            d = std::atof( argv[++i] );
+            std::cout << "d=" << d << "\n";
         } else if ( arg == "-g" ) {
             have_g = true;
             g = std::atof( argv[++i] );
@@ -82,7 +88,7 @@ int main( int argc, const char * argv[] )
             std::cout << "mfpl=" << mfpl << "\n";
         } else if ( arg == "-do_prune" ) {
             do_prune = std::atoi( argv[++i] );
-        } else if ( arg == "-d" ) {
+        } else if ( arg == "-debug" ) {
             debug = std::atoi( argv[++i] );
         } else {
             die( "unknown option: " + arg );
@@ -115,6 +121,7 @@ int main( int argc, const char * argv[] )
         openvdb::math::Transform::Ptr transform_ptr = openvdb::math::Transform::createLinearTransform();
         transform_ptr->postScale( tiff_spacing );
         rgb_grid->setTransform( transform_ptr );
+        grids.reset( new openvdb::GridPtrVec );
         grids->push_back( rgb_grid );
 
         std::cout << "Reading " << tiff_name << " and converting to a volume...\n";
@@ -209,6 +216,22 @@ int main( int argc, const char * argv[] )
         rgb_grid->fill( bbox, rgb, true );
     }
 
+    if ( have_d ) {
+        std::cout << "Filling D grid with single value d=" << d << "...\n";
+
+        //------------------------------------------------
+        // Create D Grid
+        //------------------------------------------------
+        openvdb::FloatGrid::Ptr d_grid     = openvdb::FloatGrid::create();
+        openvdb::FloatGrid::Accessor D_acc = d_grid->getAccessor();
+        d_grid->setGridClass( openvdb::GRID_UNKNOWN );
+        d_grid->setName( "d" );
+        d_grid->setTransform( transform_ptr );
+        grids->push_back( d_grid );
+
+        d_grid->fill( bbox, d, true );
+    }
+
     if ( have_g ) {
         std::cout << "Filling G grid with single value g=" << g << "...\n";
 
@@ -262,5 +285,5 @@ int main( int argc, const char * argv[] )
         out_file.close();
     }
 
-    in_file->close(); // here to avoid freeing grids
+    if ( in_file != nullptr ) in_file->close(); // here to avoid freeing grids
 }

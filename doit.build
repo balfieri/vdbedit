@@ -17,7 +17,7 @@ if ( $do_build ) {
     my $EXTRA_CFLAGS = $ENV{EXTRA_CFLAGS} || "";
     my $FLAGS = "${CXX_FLAGS} ${CXX_DEFINES} ${CXX_INCLUDES}";
     cmd( "rm -f ${prog}.x *.o" );
-    cmd( "g++ -g -std=c++17 ${FLAGS} -O3 -I.. -o ${prog}.o -c ${prog}.cpp ${EXTRA_CFLAGS}" );
+    cmd( "g++ -g -std=c++17 ${FLAGS} -O3 -I.. -o ${prog}.o -c ${EXTRA_CFLAGS} ${prog}.cpp" );
     cmd( "g++ -g -o ${prog}.x ${prog}.o -lz -lopenvdb -ltbb -lHalf -ltiff" );
 }
 #cmd( "./${prog}.x" );
