@@ -53,6 +53,7 @@ int main( int argc, const char * argv[] )
     bool        have_mfpl = false;
     float       mfpl;
     bool        do_prune = false;
+    bool        do_print = false;
     bool        debug = false;
     for( int i = 1; i < argc; i++ )
     {
@@ -91,7 +92,9 @@ int main( int argc, const char * argv[] )
             std::cout << "mfpl=" << mfpl << "\n";
         } else if ( arg == "-do_prune" ) {
             do_prune = std::atoi( argv[++i] );
-        } else if ( arg == "-debug" ) {
+        } else if ( arg == "-do_print" || arg == "-p" ) {
+            do_print = std::atoi( argv[++i] );
+        } else if ( arg == "-debug" || arg == "-d" ) {
             debug = std::atoi( argv[++i] );
         } else {
             die( "unknown option: " + arg );
@@ -317,14 +320,71 @@ int main( int argc, const char * argv[] )
         mfpl_grid->fill( bbox, mfpl, true );
     }
 
-    //------------------------------------------------
-    // Prune grids.
-    // This should not be needed given the use of fill().
-    //------------------------------------------------
     if ( do_prune ) {
+        //------------------------------------------------
+        // Prune grids.
+        // This should not be needed given the use of fill().
+        //------------------------------------------------
         for( int i = 0; i < grids->size(); i++ )
         {
             (*grids)[i]->pruneGrid();
+        }
+    }
+
+    if ( do_print ) {
+        //------------------------------------------------
+        // Print all values in all grids.
+        //------------------------------------------------
+        for( int i = 0; i < grids->size(); i++ )
+        {
+            auto grid = (*grids)[i];
+            auto bbox = grid->evalActiveVoxelBoundingBox();
+            std::string name = grid->getName();
+            std::cout << "grid" << i << ": " << name << " bbox=" << bbox << "\n";
+            int x_min = bbox.min().x();
+            int y_min = bbox.min().y();
+            int z_min = bbox.min().z();
+            int x_max = bbox.max().x();
+            int y_max = bbox.max().y();
+            int z_max = bbox.max().z();
+            if ( name == "rgb" ) {
+                auto vec3s_grid = openvdb::gridPtrCast<openvdb::Vec3SGrid>( grid );
+                auto vec3s_acc  = vec3s_grid->getAccessor();
+                for( int z = z_min; z <= z_max; z++ )
+                {
+                    std::cout << "z=" << z << "\n";
+                    for( int y = y_min; y <= y_max; y++ )
+                    {
+                        std::cout << "y=" << y << "\n";
+                        for( int x = x_min; x <= x_max; x++ )
+                        {
+                            Coord xyz( x, y, z );
+                            std::cout << vec3s_acc.getValue( xyz ) << " ";
+                        }
+                        std::cout << "\n";
+                    }
+                    std::cout << "\n";
+                }
+            } else {
+                auto flt_grid = openvdb::gridPtrCast<openvdb::FloatGrid>( grid );
+                auto flt_acc  = flt_grid->getAccessor();
+                for( int z = z_min; z <= z_max; z++ )
+                {
+                    std::cout << "z=" << z << "\n";
+                    for( int y = y_min; y <= y_max; y++ )
+                    {
+                        std::cout << "y=" << y << "\n";
+                        for( int x = x_min; x <= x_max; x++ )
+                        {
+                            Coord xyz( x, y, z );
+                            std::cout << flt_acc.getValue( xyz ) << " ";
+                        }
+                        std::cout << "\n";
+                    }
+                    std::cout << "\n";
+                }
+            }
+            std::cout << "---------------------------------------------------------------\n\n";
         }
     }
 
