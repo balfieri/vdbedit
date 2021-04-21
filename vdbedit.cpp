@@ -110,11 +110,11 @@ int main( int argc, const char * argv[] )
         //------------------------------------------------
         // Read In Existing Grids
         //------------------------------------------------
-        std::cout << "Reading " << in_name << "...\n";
+        std::cout << "# Reading " << in_name << "...\n";
         in_file = new openvdb::io::File( in_name );
         in_file->open();
         grids = in_file->getGrids();
-        std::cout << "Found " << grids->size() << " grids in the volume\n";
+        std::cout << "# Found " << grids->size() << " grids in the volume\n";
 
     } else if ( tiff_name != "" || tiff_multi != "" ) {
         openvdb::Vec3SGrid::Ptr rgb_grid = openvdb::Vec3SGrid::create();
@@ -131,7 +131,7 @@ int main( int argc, const char * argv[] )
             //------------------------------------------------
             // Read TIF Stack File Into RGB Grid
             //------------------------------------------------
-            std::cout << "Reading " << tiff_name << " and converting to a volume...\n";
+            std::cout << "# Reading " << tiff_name << " and converting to a volume...\n";
             tiff = TIFFOpen( tiff_name.c_str(), "r" );
             if ( debug ) TIFFPrintDirectory( tiff, stdout, 0 );
             uint32_t w;
@@ -166,7 +166,7 @@ int main( int argc, const char * argv[] )
                 _TIFFfree( image );
             }
             TIFFClose( tiff );
-            std::cout << z << " tiff images read\n";
+            std::cout << "# " << z << " tiff images read\n";
         } else {
             //------------------------------------------------
             // Read multiple TIF files with given prefix into one RGB grid.
@@ -215,7 +215,7 @@ int main( int argc, const char * argv[] )
                 _TIFFfree( image );
                 TIFFClose( tiff );
             }
-            std::cout << z << " tiff images read\n";
+            std::cout << "# " << z << " tiff images read\n";
         }
     } else { 
         die( "must provide -i or -tiff options for now" );
@@ -248,7 +248,7 @@ int main( int argc, const char * argv[] )
         auto voxel_size = (*grids)[i]->voxelSize();
         bool has_uniform = (*grids)[i]->hasUniformVoxels();
         transform_ptr = (*grids)[i]->transformPtr();
-        std::cout << "Volume dimensions after grid_i=" << i << " with ibox=" << bbox << " transform=" << *transform_ptr << 
+        std::cout << "# Volume dimensions after grid_i=" << i << " with ibox=" << bbox << " transform=<not showing>" << // *transform_ptr << 
                      " are: [" << x_min << "," << y_min << "," << z_min << "] .. [" << x_max << "," << y_max << "," << z_max << "]\n";
     }
     bbox = CoordBBox( x_min, y_min, z_min, x_max, y_max, z_max ); // update
@@ -257,7 +257,7 @@ int main( int argc, const char * argv[] )
     // Do Edits
     //------------------------------------------------
     if ( have_rgb ) {
-        std::cout << "Filling RGB grid with rgb=" << rgb << "\n";
+        std::cout << "# Filling RGB grid with rgb=" << rgb << "\n";
 
         //------------------------------------------------
         // Create RGB Grid
@@ -273,7 +273,7 @@ int main( int argc, const char * argv[] )
     }
 
     if ( have_d ) {
-        std::cout << "Filling D grid with single value d=" << d << "...\n";
+        std::cout << "# Filling D grid with single value d=" << d << "...\n";
 
         //------------------------------------------------
         // Create D Grid
@@ -289,7 +289,7 @@ int main( int argc, const char * argv[] )
     }
 
     if ( have_g ) {
-        std::cout << "Filling G grid with single value g=" << g << "...\n";
+        std::cout << "# Filling G grid with single value g=" << g << "...\n";
 
         //------------------------------------------------
         // Create G Grid
@@ -305,7 +305,7 @@ int main( int argc, const char * argv[] )
     }
 
     if ( have_mfpl ) {
-        std::cout << "Filling MFPL grid with single value mfpl=" << mfpl << "...\n";
+        std::cout << "# Filling MFPL grid with single value mfpl=" << mfpl << "...\n";
 
         //------------------------------------------------
         // Create MFPL Grid
@@ -334,13 +334,16 @@ int main( int argc, const char * argv[] )
     if ( do_print ) {
         //------------------------------------------------
         // Print all values in all grids.
+        // We spit this out in Python array format.
         //------------------------------------------------
         for( int i = 0; i < grids->size(); i++ )
         {
             auto grid = (*grids)[i];
             auto bbox = grid->evalActiveVoxelBoundingBox();
             std::string name = grid->getName();
-            std::cout << "grid" << i << ": " << name << " bbox=" << bbox << "\n";
+            std::cout << "\n# grid" << i << ": " << name << " bbox=" << bbox << "\n";
+            std::cout << "#\n";
+            std::cout << name << " = [\n";
             int x_min = bbox.min().x();
             int y_min = bbox.min().y();
             int z_min = bbox.min().z();
@@ -352,39 +355,41 @@ int main( int argc, const char * argv[] )
                 auto vec3s_acc  = vec3s_grid->getAccessor();
                 for( int z = z_min; z <= z_max; z++ )
                 {
-                    std::cout << "z=" << z << "\n";
+                    std::cout << "[\n";
                     for( int y = y_min; y <= y_max; y++ )
                     {
-                        std::cout << "y=" << y << "\n";
+                        std::cout << "# z = " << z << " y=" << y << "\n";
+                        std::cout << "[";
                         for( int x = x_min; x <= x_max; x++ )
                         {
                             Coord xyz( x, y, z );
-                            std::cout << vec3s_acc.getValue( xyz ) << " ";
+                            std::cout << vec3s_acc.getValue( xyz ) << ", ";
                         }
-                        std::cout << "\n";
+                        std::cout << "],\n";
                     }
-                    std::cout << "\n";
+                    std::cout << "],\n";
                 }
             } else {
                 auto flt_grid = openvdb::gridPtrCast<openvdb::FloatGrid>( grid );
                 auto flt_acc  = flt_grid->getAccessor();
                 for( int z = z_min; z <= z_max; z++ )
                 {
-                    std::cout << "z=" << z << "\n";
+                    std::cout << "[\n";
                     for( int y = y_min; y <= y_max; y++ )
                     {
-                        std::cout << "y=" << y << "\n";
+                        std::cout << "\n# z = " << z << " y=" << y << "\n";
+                        std::cout << "[";
                         for( int x = x_min; x <= x_max; x++ )
                         {
                             Coord xyz( x, y, z );
-                            std::cout << flt_acc.getValue( xyz ) << " ";
+                            std::cout << flt_acc.getValue( xyz ) << ", ";
                         }
-                        std::cout << "\n";
+                        std::cout << "],\n";
                     }
-                    std::cout << "\n";
+                    std::cout << "],\n";
                 }
             }
-            std::cout << "---------------------------------------------------------------\n\n";
+            std::cout << "] # end of " << name << "\n";
         }
     }
 
@@ -392,7 +397,7 @@ int main( int argc, const char * argv[] )
     // Write output file
     //------------------------------------------------
     if ( out_name != "" ) {
-        std::cout << "Writing " << out_name << "...\n";
+        std::cout << "# Writing " << out_name << "...\n";
         openvdb::io::File out_file( out_name );
         out_file.write( *grids );
         out_file.close();
